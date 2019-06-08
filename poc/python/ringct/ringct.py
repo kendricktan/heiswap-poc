@@ -208,7 +208,7 @@ if __name__ == "__main__":
     wrong_sig1 = sign(message, public_keys, random_scalar(), sign_idx)
     assert False is verify(message, public_keys, wrong_sig1)
 
-    wrong_sig2 = sign(message, public_keys, random_scalar(), sign_idx + 1 % secret_num)
+    wrong_sig2 = sign(message, public_keys, sign_key, sign_idx + 1 % secret_num)
     assert False is verify(message, public_keys, wrong_sig2)
 
     # To check for linkability (same signer)
