@@ -13,7 +13,7 @@ from typing import Tuple, List, Union
 
 from ecdsa import numbertheory, ellipticcurve
 from ecdsa.curves import SECP256k1
-from ecdsa.ecdsa import curve_secp256k1
+from ecdsa.ecdsa import curve_secp256k1, int_to_string, string_to_int
 from ecdsa.ellipticcurve import Point
 from ecdsa.util import string_to_number, number_to_string, randrange
 
@@ -208,7 +208,8 @@ if __name__ == "__main__":
     wrong_sig1 = sign(message, public_keys, random_scalar(), sign_idx)
     assert False is verify(message, public_keys, wrong_sig1)
 
-    wrong_sig2 = sign(message, public_keys, sign_key, sign_idx + 1 % secret_num)
+    wrong_sig2 = sign(message, public_keys, sign_key,
+                      sign_idx + 1 % secret_num)
     assert False is verify(message, public_keys, wrong_sig2)
 
     # To check for linkability (same signer)
@@ -218,5 +219,19 @@ if __name__ == "__main__":
     # (_, _, y_tilde1) = signature1
     # (_, _, y_tilde2) = signature2
     # if y_tilde1 == y_tilde2 -> same signer
+
+    # Convert to bytes32 to be easily sent to the contract
+    def int_to_string2(i):
+        return int_to_string(i).hex()
+        
+    for i in signature:
+        if type(i) is list:
+            for j in i:
+                print(j, int_to_string2(j))
+        elif type(i) is Point:
+            print(i.x(), int_to_string2(i.x()))
+            print(i.y(), int_to_string2(i.y()))
+        elif type(i) is int:
+            print(i, int_to_string2(i))
 
     print("Works as expected!")
