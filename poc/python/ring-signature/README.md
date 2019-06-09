@@ -2,5 +2,5 @@
 
 ```bash
 pip install ecdsa
-python ringct.py
+python ring-signatures
 ```

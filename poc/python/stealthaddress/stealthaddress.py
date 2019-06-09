@@ -79,10 +79,7 @@ bob_pk = G * bob_sk
 random_sk = random_scalar()
 random_pk = G * random_sk
 
-d_partial = random_sk * bob_pk
-# This has to do with n==0 mod 8 by definition, c.f.
-# the top paragraph of page 5 of http://cr.yp.to/ecdh/curve25519-20060209.pdf
-d = d_partial * 8
+d = random_sk * bob_pk
 
 # Hash d to make it unlinkable
 stealth_sk = decode_int(
@@ -94,8 +91,7 @@ stealth_address = G * stealth_sk
 
 # Given the random_pk and the stealth_pk
 # Bob checks if the stealth address belongs to him
-bob_d_partial = bob_sk * random_pk
-bob_d = bob_d_partial * 8
+bob_d = bob_sk * random_pk
 bob_stealth_sk = decode_int(
     hash_function(serialize(bob_d)).hexdigest()
 )
