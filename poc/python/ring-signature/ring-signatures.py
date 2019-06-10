@@ -13,17 +13,29 @@ from typing import Tuple, List, Union
 
 from ecdsa import numbertheory, ellipticcurve
 from ecdsa.curves import SECP256k1
-from ecdsa.ecdsa import curve_secp256k1, int_to_string, string_to_int
+from ecdsa.ecdsa import int_to_string, string_to_int
 from ecdsa.ellipticcurve import Point
 from ecdsa.util import string_to_number, number_to_string, randrange
 
+
 G = SECP256k1.generator
-P = SECP256k1.order
+N = SECP256k1.order
+P = SECP256k1.curve.p()
 hash_function = hashlib.sha256
 
 # Signature :: (Initial construction value, array of public keys, link of unique signer)
 Signature = Tuple[int, List[Point], int]
 Scalar = int
+
+
+def contains_point(x, y):
+    """
+    Does the point (x, y) exists on the curve?
+    """
+    # SECP256k1's a = 0
+    # SECP256k1's b = 7
+    # return (y * y - (x * x * x + A * x + B)) % P == 0
+    return (pow(y, 2) - (pow(x, 3) + 7)) % P == 0
 
 
 def int_to_point(x: int) -> Point:
@@ -32,19 +44,16 @@ def int_to_point(x: int) -> Point:
 
     Converts an integer to an elliptic curve
     """
-    while True:
-        f_x = (x * x * x + 7) % curve_secp256k1.p()
+    # Stupid control flow :(
+    x -= 1
+    y = P
 
-        try:
-            y = numbertheory.square_root_mod_prime(f_x, curve_secp256k1.p())
-            break
-
-        except:
-            pass
-
+    while not contains_point(x, y):
         x += 1
+        f_x = (x * x * x + 7) % P
+        y = pow(f_x, (P + 1) // 4, P)
 
-    return Point(curve_secp256k1, x, y)
+    return Point(SECP256k1.curve, x, y)
 
 
 def serialize(*args) -> bytes:
@@ -77,7 +86,7 @@ def random_scalar() -> Scalar:
 
     Returns a random scalar (secret key)
     """
-    return randrange(SECP256k1.order)
+    return randrange(P)
 
 
 def H1(b: Union[bytes, str]) -> int:
@@ -108,6 +117,8 @@ def sign(
     public_keys: List[Point],
     secret_key: Scalar,
     secret_key_idx: int
+
+
 ) -> Signature:
     """
     Generates ring signature for a message given a specific set of public keys
@@ -150,7 +161,7 @@ def sign(
 
     # Step 4
     # s_pi = u - x_pi*c_pi mod q
-    s[secret_key_idx] = (u - secret_key * c[secret_key_idx]) % P
+    s[secret_key_idx] = (u - secret_key * c[secret_key_idx]) % N
 
     # Signature is (C1, S1, ..., Sn, y_tilde)
     return (c[0], s, y_tilde)
@@ -188,7 +199,7 @@ def verify(
 
 
 if __name__ == "__main__":
-    secret_num = 8
+    secret_num = 4
 
     # Secret and public keys
     secret_keys = [random_scalar() for i in range(secret_num)]
@@ -209,7 +220,7 @@ if __name__ == "__main__":
     assert False is verify(message, public_keys, wrong_sig1)
 
     wrong_sig2 = sign(message, public_keys, sign_key,
-                      sign_idx + 1 % secret_num)
+                      (sign_idx + 1) // secret_num)
     assert False is verify(message, public_keys, wrong_sig2)
 
     # To check for linkability (same signer)
@@ -223,7 +234,7 @@ if __name__ == "__main__":
     # Convert to bytes32 to be easily sent to the contract
     def int_to_string2(i):
         return int_to_string(i).hex()
-        
+
     for i in signature:
         if type(i) is list:
             for j in i:
