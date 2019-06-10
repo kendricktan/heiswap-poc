@@ -117,8 +117,6 @@ def sign(
     public_keys: List[Point],
     secret_key: Scalar,
     secret_key_idx: int
-
-
 ) -> Signature:
     """
     Generates ring signature for a message given a specific set of public keys
@@ -184,17 +182,17 @@ def verify(
     h = H2(serialize(public_keys))
 
     for i in range(key_count):
-        z_i = (G * s[i]) + (public_keys[i] * c[i])
-        z__i = (h * s[i]) + (y_tilde * c[i])
+        z_1 = (G * s[i]) + (public_keys[i] * c[i])
+        z_2 = (h * s[i]) + (y_tilde * c[i])
 
         if i is not key_count - 1:
             c[(i + 1) % key_count] = H1(
-                serialize(public_keys, y_tilde, message, z_i, z__i)
+                serialize(public_keys, y_tilde, message, z_1, z_2)
             )
 
     # Step 2
     return c_0 == H1(
-        serialize(public_keys, y_tilde, message, z_i, z__i)
+        serialize(public_keys, y_tilde, message, z_1, z_2)
     )
 
 
