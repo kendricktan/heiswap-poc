@@ -9,7 +9,7 @@ const artifactPath = path.resolve(
     'artifacts'
 )
 
-const contractAddress = "0xC2fd440CAF60081A104C8785751Edb5F064C2857"
+const contractAddress = "0xE02A7bB14bCdc2514CBFD78ec870d5c1131b734b"
 const contractArtifact = JSON.parse(fs.readFileSync(path.resolve(artifactPath, 'compiled.json'), "utf-8"));
 
 (async () => {
