@@ -1,6 +1,6 @@
 # Example Python code for Ring Signatures
 
 ```bash
-pip install ecdsa
+pip install -r requirements.txt
 python ring-signatures
 ```

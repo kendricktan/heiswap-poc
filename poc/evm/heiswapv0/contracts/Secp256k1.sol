@@ -1,4 +1,4 @@
-pragma solidity >0.4.99 <0.6.0;
+pragma solidity >=0.5.0 <0.6.0;
 
 /*
 Taken from https://github.com/HarryR/solcrypto
@@ -10,6 +10,7 @@ library Secp256k1 {
     uint256 constant public gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint256 constant public gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
     uint256 constant public n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
+    uint256 constant public m = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffff0c; // (n + 1) // 4
     uint256 constant public a = 0;
     uint256 constant public b = 7;
 
@@ -251,7 +252,7 @@ library Secp256k1 {
         qy = mulmod(qy, z, n);
     }
 
-    /* 
+    /*
        Checks if the points x, y exists on Curve Secp256k1
        Taken from: https://github.com/warner/python-ecdsa/blob/480b5f7d9fdaf9e70be4edfad04e6d0438b212e4/src/ecdsa/numbertheory.py#L180
     */
@@ -261,8 +262,48 @@ library Secp256k1 {
         // x**3 + 7
         uint256 x_cubed_p7 = mulmod(x, x, n);
         x_cubed_p7 = mulmod(x_cubed_p7, x, n);
-        x_cubed_p7 = addmod(x_cubed_p7, 7, n);
+        x_cubed_p7 = addmod(x_cubed_p7, b, n);
 
         return (mulmod(y, y, n) - x_cubed_p7) % n == 0;
+    }
+
+    /*
+    * Calculates point y value given x
+    */
+    function getPointY(uint256 x) public view
+        returns (uint256)
+    {
+        uint256 x_cubed_p7 = mulmod(x, x, n);
+        x_cubed_p7 = mulmod(x_cubed_p7, x, n);
+        x_cubed_p7 = addmod(x_cubed_p7, 3, n);
+        
+        uint256 n_local = n;
+        uint256 m_local = m;
+        uint256 y;
+
+        // Call Big Int Pow Mod (EIP 198)
+        assembly {
+            // Get Free Memory Pointer
+            let p := mload(0x40)
+
+            // Store Data for Big Int Mod Exp Call
+            mstore(p, 0x20)                   // Length of Base
+            mstore(add(p, 0x20), 0x20)        // Length of Exponent
+            mstore(add(p, 0x40), 0x20)        // Length of Modulus
+            mstore(add(p, 0x60), x_cubed_p7)  // Base
+            mstore(add(p, 0x80), m_local)     // Exponent
+            mstore(add(p, 0xA0), n_local)     // Modulus
+
+            // Call Big Int Mod Exp
+            let success := staticcall(sub(gas, 2000), 0x05, p, 0xC0, p, 0x20)
+
+            // Use "invalid" to make gas estimation work
+            switch success case 0 { revert(p, 0xC0) }
+
+            //Store Return Data
+            y := mload(p)
+        }
+
+        return y;
     }
 }

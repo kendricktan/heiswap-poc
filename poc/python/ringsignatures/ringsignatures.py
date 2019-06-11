@@ -5,9 +5,12 @@ over elliptic curve cryptography.
 Original paper: https://eprint.iacr.org/2004/027.pdf
 """
 
+import web3
 import hashlib
 import functools
 import ecdsa
+
+from web3 import Web3
 
 from typing import Tuple, List, Union
 
@@ -21,7 +24,7 @@ from ecdsa.util import string_to_number, number_to_string, randrange
 G = SECP256k1.generator
 N = SECP256k1.order
 P = SECP256k1.curve.p()
-hash_function = hashlib.sha256
+hash_function = hashlib.sha3_256
 
 # to_hex
 
@@ -108,7 +111,13 @@ def H1(b: Union[bytes, str]) -> int:
     """
     if type(b) is not bytes:
         b = b.encode('utf-8')
-    return int(hash_function(b).hexdigest(), 16)
+
+    b = "0x" + b.hex()
+
+    return int(
+        Web3.soliditySha3(["bytes"], [b]).hex(),
+        16
+    )
 
 
 def H2(b: Union[bytes, str]) -> Point:

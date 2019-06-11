@@ -240,16 +240,16 @@ contract RingMixerV2 {
         uint256 a_local = a;
         
         assembly {
-            //Get Free Memory Pointer
+            // Get Free Memory Pointer
             let p := mload(0x40)
             
-            //Store Data for Big Int Mod Exp Call
-            mstore(p, 0x20)                 //Length of Base
-            mstore(add(p, 0x20), 0x20)      //Length of Exponent
-            mstore(add(p, 0x40), 0x20)      //Length of Modulus
-            mstore(add(p, 0x60), y_squared) //Base
-            mstore(add(p, 0x80), a_local)   //Exponent
-            mstore(add(p, 0xA0), p_local)   //Modulus
+            // Store Data for Big Int Mod Exp Call
+            mstore(p, 0x20)                 // Length of Base
+            mstore(add(p, 0x20), 0x20)      // Length of Exponent
+            mstore(add(p, 0x40), 0x20)      // Length of Modulus
+            mstore(add(p, 0x60), y_squared) // Base
+            mstore(add(p, 0x80), a_local)   // Exponent
+            mstore(add(p, 0xA0), p_local)   // Modulus
             
             //Call Big Int Mod Exp
             let success := call(sub(gas, 2000), 0x05, 0, p, 0xC0, p, 0x20)
