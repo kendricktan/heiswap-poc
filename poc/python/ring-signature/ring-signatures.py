@@ -23,6 +23,17 @@ N = SECP256k1.order
 P = SECP256k1.curve.p()
 hash_function = hashlib.sha256
 
+# to_hex
+
+
+def print_hex(x):
+    if type(x) is int:
+        print("0x" + (x).to_bytes(32, 'big').hex())
+    elif type(x) is Point:
+        print("X: 0x" + (x.x()).to_bytes(32, 'big').hex())
+        print("Y: 0x" + (x.y()).to_bytes(32, 'big').hex())
+
+
 # Signature :: (Initial construction value, array of public keys, link of unique signer)
 Signature = Tuple[int, List[Point], int]
 Scalar = int
