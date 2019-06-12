@@ -24,6 +24,7 @@ from ecdsa.util import string_to_number, number_to_string, randrange
 G = SECP256k1.generator
 N = SECP256k1.order
 P = SECP256k1.curve.p()
+MASK = 0x8000000000000000000000000000000000000000000000000000000000000000
 hash_function = hashlib.sha3_256
 
 # to_hex
@@ -38,7 +39,7 @@ def print_hex(x):
 
 
 # Signature :: (Initial construction value, array of public keys, link of unique signer)
-Signature = Tuple[int, List[Point], int]
+Signature = Tuple[int, List[Point], Point]
 Scalar = int
 
 
@@ -50,6 +51,37 @@ def contains_point(x, y):
     # SECP256k1's b = 7
     # return (y * y - (x * x * x + A * x + B)) % P == 0
     return (pow(y, 2) - (pow(x, 3) + 7)) % P == 0
+
+
+def compress_point(p: Point) -> int:
+    """
+    Compresses a point
+    """
+    x = p.x()
+
+    if (p.y() & 0x1 == 0x1):
+        x = x | MASK
+    
+    return x
+
+
+def decompress_point(x: int) -> Point:
+    """
+    Reconstructs a pint
+    """
+    x = x & (~MASK)
+
+    f_x = f_x = (x * x * x + 7) % P
+    y = pow(f_x, (P + 1) // 4, P)
+
+    if (x & MASK != 0):
+        if (y & 0x1 != 0x1):
+            y = P - y
+    else:
+        if (y & 0x1 == 0x1):
+            y = P - y
+    
+    return Point(SECP256k1.curve, x, y)
 
 
 def int_to_point(x: int) -> Point:
@@ -196,17 +228,17 @@ def verify(
     key_count = len(public_keys)
 
     c_0, s, y_tilde = signature
-    c = [c_0] + ([0] * (key_count - 1))
+    c = c_0
 
     # Step 1
     h = H2(serialize(public_keys))
 
     for i in range(key_count):
-        z_1 = (G * s[i]) + (public_keys[i] * c[i])
-        z_2 = (h * s[i]) + (y_tilde * c[i])
+        z_1 = (G * s[i]) + (public_keys[i] * c)
+        z_2 = (h * s[i]) + (y_tilde * c)
 
         if i is not key_count - 1:
-            c[(i + 1) % key_count] = H1(
+            c = H1(
                 serialize(public_keys, y_tilde, message, z_1, z_2)
             )
 
@@ -250,17 +282,17 @@ if __name__ == "__main__":
     # if y_tilde1 == y_tilde2 -> same signer
 
     # Convert to bytes32 to be easily sent to the contract
-    def int_to_string2(i):
-        return int_to_string(i).hex()
+    # def int_to_string2(i):
+    #     return int_to_string(i).hex()
 
-    for i in signature:
-        if type(i) is list:
-            for j in i:
-                print(j, int_to_string2(j))
-        elif type(i) is Point:
-            print(i.x(), int_to_string2(i.x()))
-            print(i.y(), int_to_string2(i.y()))
-        elif type(i) is int:
-            print(i, int_to_string2(i))
+    # for i in signature:
+    #     if type(i) is list:
+    #         for j in i:
+    #             print(j, int_to_string2(j))
+    #     elif type(i) is Point:
+    #         print(i.x(), int_to_string2(i.x()))
+    #         print(i.y(), int_to_string2(i.y()))
+    #     elif type(i) is int:
+    #         print(i, int_to_string2(i))
 
     print("Works as expected!")

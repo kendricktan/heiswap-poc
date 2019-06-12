@@ -14,11 +14,12 @@ library Secp256k1 {
     uint256 constant public a = 0;
     uint256 constant public b = 7;
 
+    uint256 constant public ecMask = 0x8000000000000000000000000000000000000000000000000000000000000000;
+
     function _jAdd(
         uint256 x1, uint256 z1,
-        uint256 x2, uint256 z2)
-        public 
-        pure
+        uint256 x2, uint256 z2
+    ) public pure
         returns(uint256 x3, uint256 z3)
     {
         (x3, z3) = (
@@ -33,9 +34,8 @@ library Secp256k1 {
 
     function _jSub(
         uint256 x1, uint256 z1,
-        uint256 x2, uint256 z2)
-        public 
-        pure
+        uint256 x2, uint256 z2
+    ) public pure
         returns(uint256 x3, uint256 z3)
     {
         (x3, z3) = (
@@ -50,9 +50,8 @@ library Secp256k1 {
 
     function _jMul(
         uint256 x1, uint256 z1,
-        uint256 x2, uint256 z2)
-        public 
-        pure
+        uint256 x2, uint256 z2
+    ) public pure
         returns(uint256 x3, uint256 z3)
     {
         (x3, z3) = (
@@ -63,9 +62,8 @@ library Secp256k1 {
 
     function _jDiv(
         uint256 x1, uint256 z1,
-        uint256 x2, uint256 z2) 
-        public 
-        pure
+        uint256 x2, uint256 z2
+    ) public pure
         returns(uint256 x3, uint256 z3)
     {
         (x3, z3) = (
@@ -94,9 +92,8 @@ library Secp256k1 {
 
     function _ecAdd(
         uint256 x1, uint256 y1, uint256 z1,
-        uint256 x2, uint256 y2, uint256 z2) 
-        public 
-        pure
+        uint256 x2, uint256 y2, uint256 z2
+    ) public pure
         returns(uint256 x3, uint256 y3, uint256 z3)
     {
         uint256 lx;
@@ -198,6 +195,11 @@ library Secp256k1 {
         y2 = mulmod(y2, z, n);
     }
 
+    function ecmulG(uint256 scalar) public pure
+        returns (uint256, uint256)
+    {
+        return ecmul(gx, gy, scalar);
+    }
 
     function point_hash(uint256[2] memory point)
         public pure returns(address)
@@ -275,7 +277,7 @@ library Secp256k1 {
     {
         uint256 x_cubed_p7 = mulmod(x, x, n);
         x_cubed_p7 = mulmod(x_cubed_p7, x, n);
-        x_cubed_p7 = addmod(x_cubed_p7, 3, n);
+        x_cubed_p7 = addmod(x_cubed_p7, 7, n);
         
         uint256 n_local = n;
         uint256 m_local = m;
@@ -305,5 +307,53 @@ library Secp256k1 {
         }
 
         return y;
+    }
+
+    /*
+    * Compresses public key
+    */
+    function compressPoint(uint256[2] memory point) public pure
+        returns (uint256)
+    {
+        // Store x value
+        uint256 x = point[0];
+
+        // Determine sign
+        if ((point[1] & 0x1) == 0x1) {
+            x |= ecMask;
+        }
+
+        return x;
+    }
+
+    /*
+    * Decompresses public key
+    */
+    function decompressPoint(uint256 _x) public view
+        returns (uint256[2] memory)
+    {
+        uint256 x = _x & (~ecMask);
+        uint256 y = getPointY(x);
+
+        // Positive y
+        if ((x & ecMask) != 0) {
+            if (y & 0x1 != 0x1) {
+                y = n - y;
+            }
+        }
+
+        // Negative y
+        else {
+            if (y & 0x1 == 0x1) {
+                y = n - y;
+            }
+        }
+
+        // TODO: Better error handling
+        if (!containsPoint(x, y)) {
+            return [uint256(0), uint256(0)];
+        }
+
+        return [x, y];
     }
 }

@@ -4,11 +4,7 @@ import "./Secp256k1.sol";
 import "./LSAG.sol";
 
 contract HeiswapV0 {
-    function testFunc(uint256 x, uint256 y) public pure returns (bool) {
-        return Secp256k1.containsPoint(x, y);
-    }
-    
-    function testFunc2(bytes memory b) public pure returns (uint256) {
-        return LSAG.H1(b);
+    function testFunc(uint256[] memory args) public pure returns (bytes memory) {
+        return abi.encodePacked(args);
     }
 }
