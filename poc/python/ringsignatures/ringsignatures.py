@@ -30,16 +30,20 @@ hash_function = hashlib.sha3_256
 # to_hex
 
 
+def to_hex(i: int) -> str:
+    return "0x" + (i).to_bytes(32, 'big').hex()
+
+
 def print_hex(x):
     if type(x) is int:
-        print("0x" + (x).to_bytes(32, 'big').hex())
+        print(to_hex(x))
     elif type(x) is Point:
-        print("X: 0x" + (x.x()).to_bytes(32, 'big').hex())
-        print("Y: 0x" + (x.y()).to_bytes(32, 'big').hex())
+        print(to_hex(x.x()))
+        print(to_hex(x.y()))
 
 
 # Signature :: (Initial construction value, array of public keys, link of unique signer)
-Signature = Tuple[int, List[Point], Point]
+Signature = Tuple[int, List[int], Point]
 Scalar = int
 
 
@@ -53,34 +57,32 @@ def contains_point(x, y):
     return (pow(y, 2) - (pow(x, 3) + 7)) % P == 0
 
 
-def compress_point(p: Point) -> int:
+def compress_point(p: Point) -> str:
     """
     Compresses a point
     """
-    x = p.x()
-
-    if (p.y() & 0x1 == 0x1):
-        x = x | MASK
-    
-    return x
+    if p.y() & 1:
+        return "03" + int_to_string(p.x()).rjust(32, b"\x00").hex()
+    return "02" + int_to_string(p.x()).rjust(32, b"\x00").hex()
 
 
-def decompress_point(x: int) -> Point:
+def decompress_point(b: str) -> Point:
     """
     Reconstructs a pint
     """
-    x = x & (~MASK)
+    x = int(b[2:], 16)
 
     f_x = f_x = (x * x * x + 7) % P
     y = pow(f_x, (P + 1) // 4, P)
 
-    if (x & MASK != 0):
-        if (y & 0x1 != 0x1):
-            y = P - y
+    # Odd
+    if (b[:2] == "03"):
+        if (y % 2 != 1):
+            y = -y % P
     else:
-        if (y & 0x1 == 0x1):
-            y = P - y
-    
+        if (y % 2 != 0):
+            y = -y % P
+
     return Point(SECP256k1.curve, x, y)
 
 
@@ -242,10 +244,40 @@ def verify(
                 serialize(public_keys, y_tilde, message, z_1, z_2)
             )
 
+        if i == 0:
+            print("--- z1 ---")
+            print_hex(z_1)
+            print("--- z2 ---")
+            print_hex(z_2)
+            print("--- c ---")
+            print_hex(c)
+
     # Step 2
     return c_0 == H1(
         serialize(public_keys, y_tilde, message, z_1, z_2)
     )
+
+
+def serialize_signature(public_keys: List[Point], sig: Signature) -> List[str]:
+    """
+    Serializes signature to be passed into the smart contract
+    """
+    p2h = lambda x: [to_hex(x.x()), to_hex(x.y())]
+
+    hex_pub_keys: List[str] = functools.reduce(
+        lambda acc, p: acc + p2h(p),
+        public_keys,
+        []
+    )
+
+    c_0, s, y_tilde = sig
+
+    c_0_hex: str = to_hex(c_0)
+    y_tilde_hex: List[str] = p2h(y_tilde)
+
+    s_hex: List[str] = list(map(to_hex, s))
+
+    return [c_0_hex] + y_tilde_hex + hex_pub_keys + s_hex
 
 
 if __name__ == "__main__":
@@ -266,12 +298,17 @@ if __name__ == "__main__":
     signature = sign(message, public_keys, sign_key, sign_idx)
     assert verify(message, public_keys, signature)
 
-    wrong_sig1 = sign(message, public_keys, random_scalar(), sign_idx)
-    assert False is verify(message, public_keys, wrong_sig1)
+    # wrong_sig1 = sign(message, public_keys, random_scalar(), sign_idx)
+    # assert False is verify(message, public_keys, wrong_sig1)
 
-    wrong_sig2 = sign(message, public_keys, sign_key,
-                      (sign_idx + 1) // secret_num)
-    assert False is verify(message, public_keys, wrong_sig2)
+    # wrong_sig2 = sign(message, public_keys, sign_key,
+    #                   (sign_idx + 1) // secret_num)
+    # assert False is verify(message, public_keys, wrong_sig2)
+
+    print("--- Message ---")
+    print("0x" + message.encode('utf-8').hex())
+    print("--- Signature (smart contract form) ----")
+    print(serialize_signature(public_keys, signature))
 
     # To check for linkability (same signer)
     # we can compare the value of y_tilde with

@@ -1,8 +1,11 @@
+const BytesLib = artifacts.require("BytesLib");
 const Secp256k1 = artifacts.require("Secp256k1");
 const LSAG = artifacts.require("LSAG");
 const HeiswapV0 = artifacts.require("HeiswapV0");
 
 module.exports = function(deployer) {
+  deployer.deploy(BytesLib);
+  deployer.link(BytesLib, Secp256k1);
   deployer.deploy(Secp256k1);
   deployer.link(Secp256k1, LSAG);
   deployer.deploy(LSAG);

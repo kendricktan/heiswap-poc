@@ -6,6 +6,8 @@ Taken from https://github.com/HarryR/solcrypto
 License: GPL-3.0
 */
 
+import "./BytesLib.sol";
+
 library Secp256k1 {
     uint256 constant public gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint256 constant public gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
@@ -311,47 +313,44 @@ library Secp256k1 {
 
     /*
     * Compresses public key
+    * https://bitcoin.stackexchange.com/a/76182
     */
     function compressPoint(uint256[2] memory point) public pure
-        returns (uint256)
+        returns (bytes memory)
     {
-        // Store x value
-        uint256 x = point[0];
-
-        // Determine sign
+        // Odd root
         if ((point[1] & 0x1) == 0x1) {
-            x |= ecMask;
+            return abi.encodePacked(bytes1(0x03), bytes32(point[0]));
         }
-
-        return x;
+        
+        // Event root
+        return abi.encodePacked(bytes1(0x02), bytes32(point[0]));
     }
 
     /*
     * Decompresses public key
+    * https://bitcoin.stackexchange.com/a/76182
     */
-    function decompressPoint(uint256 _x) public view
+    function decompressPoint(bytes memory b) public view
         returns (uint256[2] memory)
     {
-        uint256 x = _x & (~ecMask);
+        require(b.length == 33, "Invalid compressed point");
+
+        uint256 x = BytesLib.toUint(b, 1);
         uint256 y = getPointY(x);
 
-        // Positive y
-        if ((x & ecMask) != 0) {
-            if (y & 0x1 != 0x1) {
+        // Odd root
+        if (b[0] == 0x03) {
+            if (y % 2 == 0) {
                 y = n - y;
             }
         }
-
-        // Negative y
+        
+        // Even root
         else {
-            if (y & 0x1 == 0x1) {
+            if (y % 2 != 0) {
                 y = n - y;
             }
-        }
-
-        // TODO: Better error handling
-        if (!containsPoint(x, y)) {
-            return [uint256(0), uint256(0)];
         }
 
         return [x, y];
