@@ -203,59 +203,6 @@ library Secp256k1 {
         return ecmul(gx, gy, scalar);
     }
 
-    function point_hash(uint256[2] memory point)
-        public pure returns(address)
-    {
-        return address(uint256(keccak256(abi.encodePacked(point[0], point[1]))) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-    }
-
-    /**
-    * hash(g^a + B^c)
-    */
-    function sbmul_add_mul(uint256 _s, uint256[2] memory B, uint256 c)
-        public pure returns(address)
-    {
-        uint256 s = _s;
-        uint256 Q = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
-        s = (Q - s) % Q;
-        s = mulmod(s, B[0], Q);
-
-        return ecrecover(bytes32(s), B[1] % 2 != 0 ? 28 : 27, bytes32(B[0]), bytes32(mulmod(c, B[0], Q)));
-    }
-
-    //
-    // Based on the original idea of Vitalik Buterin:
-    // https://ethresear.ch/t/you-can-kinda-abuse-ecrecover-to-do-ecmul-in-secp256k1-today/2384/9
-    //
-    function ecmulVerify(uint256 x1, uint256 y1, uint256 scalar, uint256 qx, uint256 qy) public pure
-        returns(bool)
-    {
-        address signer = sbmul_add_mul(0, [x1, y1], scalar);
-        return point_hash([qx, qy]) == signer;
-    }
-
-    function publicKey(uint256 privKey) public pure
-        returns(uint256 qx, uint256 qy)
-    {
-        return ecmul(gx, gy, privKey);
-    }
-
-    function publicKeyVerify(uint256 privKey, uint256 x, uint256 y) public pure
-        returns(bool)
-    {
-        return ecmulVerify(gx, gy, privKey, x, y);
-    }
-
-    function deriveKey(uint256 privKey, uint256 pubX, uint256 pubY) public pure
-        returns(uint256 qx, uint256 qy)
-    {
-        uint256 z;
-        (qx, qy, z) = _ecMul(privKey, pubX, pubY, 1);
-        z = _inverse(z);
-        qx = mulmod(qx, z, n);
-        qy = mulmod(qy, z, n);
-    }
-
     /*
        Checks if the points x, y exists on Curve Secp256k1
        Taken from: https://github.com/warner/python-ecdsa/blob/480b5f7d9fdaf9e70be4edfad04e6d0438b212e4/src/ecdsa/numbertheory.py#L180
@@ -331,16 +278,16 @@ library Secp256k1 {
     * Decompresses public key
     * https://bitcoin.stackexchange.com/a/76182
     */
-    function decompressPoint(bytes memory b) public view
+    function decompressPoint(bytes memory p) public view
         returns (uint256[2] memory)
     {
-        require(b.length == 33, "Invalid compressed point");
+        require(p.length == 33, "Invalid compressed point");
 
-        uint256 x = BytesLib.toUint(b, 1);
+        uint256 x = BytesLib.toUint(p, 1);
         uint256 y = getPointY(x);
 
         // Odd root
-        if (b[0] == 0x03) {
+        if (p[0] == 0x03) {
             if (y % 2 == 0) {
                 y = n - y;
             }

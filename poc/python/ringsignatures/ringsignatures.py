@@ -31,7 +31,7 @@ hash_function = hashlib.sha3_256
 
 
 def to_hex(i: int) -> str:
-    return "0x" + (i).to_bytes(32, 'big').hex()
+    return (i).to_bytes(32, 'big').hex()
 
 
 def print_hex(x):
@@ -244,13 +244,13 @@ def verify(
                 serialize(public_keys, y_tilde, message, z_1, z_2)
             )
 
-        if i == 0:
-            print("--- z1 ---")
-            print_hex(z_1)
-            print("--- z2 ---")
-            print_hex(z_2)
-            print("--- c ---")
-            print_hex(c)
+        # if i == 0:
+        #     print("--- z1 ---")
+        #     print_hex(z_1)
+        #     print("--- z2 ---")
+        #     print_hex(z_2)
+        #     print("--- c ---")
+        #     print_hex(c)
 
     # Step 2
     return c_0 == H1(
@@ -262,10 +262,8 @@ def serialize_signature(public_keys: List[Point], sig: Signature) -> List[str]:
     """
     Serializes signature to be passed into the smart contract
     """
-    p2h = lambda x: [to_hex(x.x()), to_hex(x.y())]
-
     hex_pub_keys: List[str] = functools.reduce(
-        lambda acc, p: acc + p2h(p),
+        lambda acc, p: acc + [compress_point(p)],
         public_keys,
         []
     )
@@ -273,11 +271,22 @@ def serialize_signature(public_keys: List[Point], sig: Signature) -> List[str]:
     c_0, s, y_tilde = sig
 
     c_0_hex: str = to_hex(c_0)
-    y_tilde_hex: List[str] = p2h(y_tilde)
+    y_tilde_hex: str = compress_point(y_tilde)
 
     s_hex: List[str] = list(map(to_hex, s))
 
-    return [c_0_hex] + y_tilde_hex + hex_pub_keys + s_hex
+    signature = [c_0_hex] + [y_tilde_hex] + s_hex + hex_pub_keys
+
+    signature_offset = []
+    for i in signature:
+        if len(i) > 64:
+            signature_offset.append(i[:2])
+    signature_offset = list(map(lambda x: "0x" + x, signature_offset))
+
+    signature = list(map(lambda x: x[2:] if len(x) > 64 else x, signature))
+    signature = list(map(lambda x: "0x" + x, signature))
+
+    return signature, signature_offset
 
 
 if __name__ == "__main__":
@@ -305,10 +314,10 @@ if __name__ == "__main__":
     #                   (sign_idx + 1) // secret_num)
     # assert False is verify(message, public_keys, wrong_sig2)
 
-    print("--- Message ---")
-    print("0x" + message.encode('utf-8').hex())
-    print("--- Signature (smart contract form) ----")
-    print(serialize_signature(public_keys, signature))
+    # print("--- Message ---")
+    _signature, _offset = serialize_signature(public_keys, signature)
+    print("lsag = await LSAG.deployed()")
+    print("await lsag.verify('" + str("0x" + message.encode('utf-8').hex()) + "' , " + str(_signature) + ", " + str(_offset) + ")")
 
     # To check for linkability (same signer)
     # we can compare the value of y_tilde with
@@ -332,4 +341,4 @@ if __name__ == "__main__":
     #     elif type(i) is int:
     #         print(i, int_to_string2(i))
 
-    print("Works as expected!")
+    # print("Works as expected!")
