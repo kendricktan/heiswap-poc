@@ -54,26 +54,26 @@ library LSAG {
     * Helper function to prevent stack nested variables
     *
     */
-    function ringCalcZ1(
-        uint256 c,
-        uint256 s,
-        bytes memory publicKey // Compressed public key
-    ) public view
-        returns (uint256[2] memory)
-    {
-        uint256[2] memory pub = Secp256k1.decompressPoint(publicKey);
+    // function ringCalcZ1(
+    //     uint256 c,
+    //     uint256 s,
+    //     bytes memory publicKey // Compressed public key
+    // ) public view
+    //     returns (uint256[2] memory)
+    // {
+    //     uint256[2] memory pub = Secp256k1.decompressPoint(publicKey);
 
-        uint256 tempx;
-        uint256 tempy;
-        uint256 z_x;
-        uint256 z_y;
+    //     uint256 tempx;
+    //     uint256 tempy;
+    //     uint256 z_x;
+    //     uint256 z_y;
 
-        (tempx, tempy) = Secp256k1.ecmulG(s);
-        (z_x, z_y) = Secp256k1.ecmul(pub[0], pub[1], c);
-        (z_x, z_y) = Secp256k1.ecadd(tempx, tempy, z_x, z_y);
+    //     (tempx, tempy) = Secp256k1.ecMulG(s);
+    //     (z_x, z_y) = Secp256k1.ecMul(pub[0], pub[1], c);
+    //     (z_x, z_y) = Secp256k1.ecAdd(tempx, tempy, z_x, z_y);
 
-        return [z_x, z_y];
-    }
+    //     return [z_x, z_y];
+    // }
 
     // function ringCalcZ2(
     //     uint256 c,
@@ -127,37 +127,39 @@ library LSAG {
         // Memory registers
         uint256 i = 0;
         uint256 ringSize = (signature.length - 2) / 2;
-        uint256 c = BytesLib.toUint(abi.encodePacked(signature[0]), 0);
+        uint256 c = uint256(signature[0]);
 
         require(offset.length == ringSize + 1, "Offset incorrect length");
 
         // Calculate H (with public keys)
-        // bytes memory hBytes = "";
+        bytes memory hBytes = "";
 
-        // for (i = 0; i < ringSize; i++) {
-        //     // public key x = signature[2+N+i]
-        //     // offset public key x = signature[1+i]
-        //     hBytes = abi.encodePacked(hBytes, Secp256k1.decompressPoint(
-        //         abi.encodePacked(offset[1+i], signature[2+ringSize+i])
-        //     ));
-        // }
-        // uint256[2] memory h = H2(hBytes);
+        for (i = 0; i < ringSize; i++) {
+            // public key x = signature[2+N+i]
+            // offset public key x = signature[1+i]
+            hBytes = abi.encodePacked(hBytes, Secp256k1.decompressPoint(
+                offset[1+i], signature[2+ringSize+i]
+            ));
+        }
+        uint256[2] memory h = H2(hBytes);
         
-        uint256[2] memory z_1;
+        // uint256[2] memory z_1;
         // uint256[2] memory z_2;
 
-        z_1 = ringCalcZ1(
-            c,
-            BytesLib.toUint(abi.encodePacked(signature[2+i]), 0), // s
-            abi.encodePacked(offset[1+i], signature[2+ringSize+i]) // public key
-        );
-
         // for (i = 0; i < ringSize; i++) {
-            // z_1 = ringCalcZ1(
-            //     c,
-            //     signature[3+(ringSize*2)+i], // s
-            //     signature[3+(i*2)], signature[3+(i*2)+1] // public key
-            // );
+        //     z_1 = ringCalcZ1(
+        //         c,
+        //         uint256(signature[2+i]),  // s
+        //         abi.encodePacked(offset[1+i], signature[2+ringSize+i]) // public key
+        //     );
+        // }
+
+        // i = 2;
+        // z_1 = ringCalcZ1(
+        //     c,
+        //     BytesLib.toUint(abi.encodePacked(signature[2+i]), 0), // s
+        //     abi.encodePacked(offset[1+i], signature[2+ringSize+i]) // public key
+        // );
 
             // z_2 = ringCalcZ2(
             //     c,
@@ -177,7 +179,7 @@ library LSAG {
         //     abi.encodePacked(hBytes, signature[1], signature[2], message, z_1, z_2)
         // );
 
-        return z_1;
+        return h;
     }
 
 }
