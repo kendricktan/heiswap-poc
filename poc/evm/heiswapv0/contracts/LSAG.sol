@@ -19,7 +19,19 @@ library LSAG {
     function intToPoint(uint256 _x) public view
         returns (uint256[2] memory)
     {
-        return [uint256(0x00), uint256(0x00)];
+        uint256 x = _x;
+        uint256 y;
+        uint256 beta;
+
+        while (true) {
+            (beta, y) = AltBn128.evalCurve(x);
+
+            if (AltBn128.onCurveBeta(beta, y)) {
+                return [x, y];
+            }
+
+            x = AltBn128.addmodn(x, 1);
+        }
     }
 
     /**
@@ -49,8 +61,7 @@ library LSAG {
     */
     function verify(
         bytes memory message,
-        bytes32[] memory signature,
-        bytes1[] memory offset // Used to determine of the point is odd or even
+        bytes32[] memory signature
     ) public view
         returns (uint256[2] memory)
     {

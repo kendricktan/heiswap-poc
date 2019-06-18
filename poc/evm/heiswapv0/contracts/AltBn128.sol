@@ -80,6 +80,12 @@ library AltBn128 {
         }
     }
 
+    function addmodn(uint256 x, uint256 n) public pure
+        returns (uint256)
+    {
+        return addmod(x, n, N);
+    }
+
     /*
        Checks if the points x, y exists on alt_bn_128 curve
     */
@@ -90,6 +96,12 @@ library AltBn128 {
         beta = mulmod(beta, x, P);
         beta = addmod(beta, 3, P);
 
+        return onCurveBeta(beta, y);
+    }
+
+    function onCurveBeta(uint256 beta, uint256 y) public pure
+        returns(bool)
+    {
         return beta == mulmod(y, y, P);
     }
 
@@ -97,7 +109,7 @@ library AltBn128 {
     * Calculates point y value given x
     */
     function evalCurve(uint256 x) public view
-        returns (uint256)
+        returns (uint256, uint256)
     {
         uint256 beta = mulmod(x, x, P);
         beta = mulmod(beta, x, P);
@@ -105,10 +117,8 @@ library AltBn128 {
 
         uint256 y = powmod(beta, A, P);
 
-        // Requires y to be on curve
-        require(beta == mulmod(y, y, P), "Invalid x for evalCurve");
-
-        return y;
+        // require(beta == mulmod(y, y, P), "Invalid x for evalCurve");
+        return (beta, y);
     }
 
     /*
@@ -134,8 +144,17 @@ library AltBn128 {
     function decompressPoint(uint256 _x) public view
         returns (uint256[2] memory)
     {
+
         uint256 x = _x & (~ECSignMask);
-        uint256 y = evalCurve(x);
+        uint256 beta;
+        uint256 y;
+
+        (beta, y) = evalCurve(x);
+
+        // TODO: Better error handle
+        if (!onCurveBeta(beta, y)) {
+            return [uint256(0), uint256(0)];
+        }
 
         // Positive Y
         if ((x & ECSignMask) != 0) {

@@ -139,7 +139,7 @@ def eval_curve(x: int) -> int:
     """
     beta = addmodp(mulmodp(mulmodp(x, x), x), 3)
     y = powmod(beta, A, P)
-    return y
+    return beta, y
 
 
 def int_to_point(x: int) -> Point:
@@ -152,7 +152,7 @@ def int_to_point(x: int) -> Point:
 
     while True:
         beta, y = eval_curve(x)
-        if beta == mulmodp(y, y) and on_curve(x, y):
+        if beta == mulmodp(y, y):
             return x, y
         x = addmodn(x, 1)
 
