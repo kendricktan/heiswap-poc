@@ -44,6 +44,13 @@ invmodp = lambda x: inv(x, P)
 negp = lambda x: (x[0], -x[1])
 
 
+def to_hex(x):
+    if type(x) is tuple:
+        return (to_hex(x[0]), to_hex(x[1]))
+    if type(x) is int:
+        return (x).to_bytes(32, 'big').hex()
+
+
 def powmod(a, b, n):
     c = 0
     f = 1
@@ -63,6 +70,35 @@ N: int = bn128.curve_order
 P: int = bn128.field_modulus
 A: int = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52
 MASK: int = 0x8000000000000000000000000000000000000000000000000000000000000000
+
+
+def compress_point(p: Point) -> int:
+    """
+    Compresses a point
+    """
+    x = p[0]
+
+    if (p[1] & 0x1 == 0x1):
+        x = x | MASK
+
+    return x
+
+
+def decompress_point(_x: int) -> Point:
+    """
+    Reconstructs a pint
+    """
+    x = _x & (~MASK)
+    y = eval_curve(x)
+
+    if (x & MASK != 0):
+        if (y & 0x1 != 0x1):
+            y = P - y
+    else:
+        if (y & 0x1 == 0x1):
+            y = P - y
+
+    return (x, y)
 
 
 def serialize(*args) -> bytes:
@@ -95,15 +131,15 @@ def on_curve(x, y) -> bool:
     return beta == mulmodp(y, y)
 
 
-def eval_curve(x: int) -> Point:
+def eval_curve(x: int) -> int:
     """
     Helper function
 
-    Converts an integer to an alt_bn_128 point
+    returns y given x for on alt_bn_128
     """
     beta = addmodp(mulmodp(mulmodp(x, x), x), 3)
     y = powmod(beta, A, P)
-    return beta, y
+    return y
 
 
 def int_to_point(x: int) -> Point:

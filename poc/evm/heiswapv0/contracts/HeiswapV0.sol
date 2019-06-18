@@ -1,6 +1,6 @@
 pragma solidity >=0.5.0 <0.6.0;
 
-import "./Secp256k1.sol";
+import "./AltBn128.sol";
 import "./LSAG.sol";
 
 contract HeiswapV0 {

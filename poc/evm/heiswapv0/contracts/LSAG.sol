@@ -1,6 +1,6 @@
 pragma solidity >=0.5.0 <0.6.0;
 
-import "./Secp256k1.sol";
+import "./AltBn128.sol";
 
 /*
 Linkable Spontaneous Anonymous Groups
@@ -19,15 +19,7 @@ library LSAG {
     function intToPoint(uint256 _x) public view
         returns (uint256[2] memory)
     {
-        uint256 x = _x;
-        uint256 y = Secp256k1.getPointY(x);
-
-        while (!Secp256k1.containsPoint(x, y)) {
-            x = x + 1;
-            y = Secp256k1.getPointY(x);
-        }
-
-        return [x, y];
+        return [uint256(0x00), uint256(0x00)];
     }
 
     /**
@@ -50,50 +42,6 @@ library LSAG {
         return intToPoint(H1(b));
     }
 
-    /**
-    * Helper function to prevent stack nested variables
-    *
-    */
-    // function ringCalcZ1(
-    //     uint256 c,
-    //     uint256 s,
-    //     bytes memory publicKey // Compressed public key
-    // ) public view
-    //     returns (uint256[2] memory)
-    // {
-    //     uint256[2] memory pub = Secp256k1.decompressPoint(publicKey);
-
-    //     uint256 tempx;
-    //     uint256 tempy;
-    //     uint256 z_x;
-    //     uint256 z_y;
-
-    //     (tempx, tempy) = Secp256k1.ecMulG(s);
-    //     (z_x, z_y) = Secp256k1.ecMul(pub[0], pub[1], c);
-    //     (z_x, z_y) = Secp256k1.ecAdd(tempx, tempy, z_x, z_y);
-
-    //     return [z_x, z_y];
-    // }
-
-    // function ringCalcZ2(
-    //     uint256 c,
-    //     uint256 s,
-    //     uint256 hx, uint256 hy,
-    //     uint256 keyImageX, uint256 keyImageY // (y_tilde) keyImage is compressed
-    // ) public view
-    //     returns (uint256[2] memory)
-    // {
-    //     uint256 tempx;
-    //     uint256 tempy;
-    //     uint256 a_x;
-    //     uint256 a_y;
-
-    //     (tempx, tempy) = Secp256k1.ecmul(hx, hy, s);
-    //     (a_x, a_y) = Secp256k1.ecmul(keyImageX, keyImageY, c);
-    //     (a_x, a_y) = Secp256k1.ecadd(tempx, tempy, a_x, a_y);
-
-    //     return [a_x, a_y];
-    // }
 
     /**
     * Verifies the ring signature
@@ -124,62 +72,7 @@ library LSAG {
         // Makes sure that signature is length is correct
         require(signature.length % 2 == 0, "Signature incorrect length");
 
-        // Memory registers
-        uint256 i = 0;
-        uint256 ringSize = (signature.length - 2) / 2;
-        uint256 c = uint256(signature[0]);
-
-        require(offset.length == ringSize + 1, "Offset incorrect length");
-
-        // Calculate H (with public keys)
-        bytes memory hBytes = "";
-
-        for (i = 0; i < ringSize; i++) {
-            // public key x = signature[2+N+i]
-            // offset public key x = signature[1+i]
-            hBytes = abi.encodePacked(hBytes, Secp256k1.decompressPoint(
-                offset[1+i], signature[2+ringSize+i]
-            ));
-        }
-        uint256[2] memory h = H2(hBytes);
-        
-        // uint256[2] memory z_1;
-        // uint256[2] memory z_2;
-
-        // for (i = 0; i < ringSize; i++) {
-        //     z_1 = ringCalcZ1(
-        //         c,
-        //         uint256(signature[2+i]),  // s
-        //         abi.encodePacked(offset[1+i], signature[2+ringSize+i]) // public key
-        //     );
-        // }
-
-        // i = 2;
-        // z_1 = ringCalcZ1(
-        //     c,
-        //     BytesLib.toUint(abi.encodePacked(signature[2+i]), 0), // s
-        //     abi.encodePacked(offset[1+i], signature[2+ringSize+i]) // public key
-        // );
-
-            // z_2 = ringCalcZ2(
-            //     c,
-            //     signature[3+(ringSize*2)+i],
-            //     h[0], h[1],
-            //     signature[1], signature[2]
-            // );
-
-            // if (i < ringSize - 1) {
-            //     c = H1(
-            //         abi.encodePacked(hBytes, signature[1], signature[2], message, z_1, z_2)
-            //     );
-            // }
-        // }
-
-        // return c == H1(
-        //     abi.encodePacked(hBytes, signature[1], signature[2], message, z_1, z_2)
-        // );
-
-        return h;
+        return [uint256(0x00), uint256(0x00)];
     }
 
 }
