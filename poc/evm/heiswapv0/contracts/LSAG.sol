@@ -59,19 +59,15 @@ library LSAG {
     * Avoids stack too deep problem
     */
     function ringCalcZ1(
-        bytes32[] memory signature,
+        uint256[2] memory pubKey,
         uint256 c,
-        uint256 i,
-        uint256 ringSize
+        uint256 s
     ) public view
         returns (uint256[2] memory)
     {
         return AltBn128.ecAdd(
-            AltBn128.ecMulG(uint256(signature[2+i])),
-            AltBn128.ecMul(
-                AltBn128.decompressPoint(uint256(signature[2+ringSize+i])),
-                c
-            )
+            AltBn128.ecMulG(s),
+            AltBn128.ecMul(pubKey, c)
         );
     }
 
@@ -80,19 +76,16 @@ library LSAG {
     * Avoids stack too deep problem
     */
     function ringCalcZ2(
-        bytes32[] memory signature,
+        uint256[2] memory keyImage,
         uint256[2] memory h,
-        uint256 c,
-        uint256 i
+        uint256 s,
+        uint256 c
     ) public view
         returns (uint256[2] memory)
     {
         return AltBn128.ecAdd(
-            AltBn128.ecMul(h, uint256(signature[2+i])),
-            AltBn128.ecMul(
-                AltBn128.decompressPoint(uint256(signature[1])),
-                c
-            )
+            AltBn128.ecMul(h, s),
+            AltBn128.ecMul(keyImage, c)
         );
     }
 
@@ -103,37 +96,27 @@ library LSAG {
     */
     function verify(
         bytes memory message,
-        bytes32[] memory signature
+        uint256 c0,
+        uint256[2] memory keyImage,
+        uint256[] memory s,
+        uint256[2][] memory publicKeys
     ) public view
         returns (bool)
     {
-        // Signature is encoded as follows
-        // Signature length = (N*2)+2
-        // signature[0]             - c_0
-        // signature[1]             - y_tilde (key image, compressed)
-        // signature[2:2+N]         - s
-        // signature[2+N:2+(2*N)]   - publicKey (compressed)
-
-        // Mininum signature size (2 public keys) = (2*2)+2
-        require(signature.length >= 6, "Signature size too small");
-
-        // Makes sure that signature is length is correct
-        require(signature.length % 2 == 0, "Signature incorrect length");
+        // Mininum signature size (2 public keys) = (2*2)+1
+        require(publicKeys.length >= 2, "Signature size too small");
         
-        uint256 c = uint256(signature[0]);
+        uint256 c = c0;
         uint256 i = 0;
-        uint256 ringSize = (signature.length - 2) / 2;
 
         // Step 1
         // Extract out public key bytes
         bytes memory hBytes = "";
 
-        for (i = 0; i < ringSize; i++) {
+        for (i = 0; i < publicKeys.length; i++) {
             hBytes = abi.encodePacked(
                 hBytes,
-                AltBn128.decompressPoint(
-                    uint256(signature[2+ringSize+i])
-                )
+                publicKeys[i]
             );
         }
 
@@ -143,32 +126,23 @@ library LSAG {
         uint256[2] memory z_1;
         uint256[2] memory z_2;
 
-        for (i = 0; i < ringSize; i++) {
-            z_1 = ringCalcZ1(signature, c, i, ringSize);
-            z_2 = ringCalcZ2(signature, h, c, i);
 
-            if (i < ringSize - 1) {
-                c = H1(
-                    abi.encodePacked(
-                        hBytes,
-                        AltBn128.decompressPoint(uint256(signature[1])),
-                        message,
-                        z_1,
-                        z_2
-                    )
-                );
-            }
+        for (i = 0; i < publicKeys.length; i++) {
+            z_1 = ringCalcZ1(publicKeys[i], c, s[i]);
+            z_2 = ringCalcZ2(keyImage, h, s[i], c);
+
+            c = H1(
+                abi.encodePacked(
+                    hBytes,
+                    keyImage,
+                    message,
+                    z_1,
+                    z_2
+                )
+            );
         }
 
-        return uint256(signature[0]) == H1(
-            abi.encodePacked(
-                hBytes,
-                AltBn128.decompressPoint(uint256(signature[1])),
-                message,
-                z_1,
-                z_2
-            )
-        );
+        return c0 == c;
     }
 
 }

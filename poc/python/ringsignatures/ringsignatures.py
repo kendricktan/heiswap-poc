@@ -44,6 +44,7 @@ invmodp = lambda x: inv(x, P)
 negp = lambda x: (x[0], -x[1])
 
 
+
 def to_hex(x):
     if type(x) is tuple:
         return (to_hex(x[0]), to_hex(x[1]))
@@ -295,31 +296,6 @@ def verify(
     )
 
 
-"""
-Utility section
-"""
-
-def serialize_signature(public_keys: List[Point], sig: Signature) -> List[str]:
-    """
-    Serializes signature to be passed into the smart contract
-    """
-    hex_pub_keys: List[str] = []
-    
-    for i in public_keys:
-        hex_pub_keys.append(to_hex(compress_point(i)))
-
-    c_0, s, y_tilde = sig
-
-    c_0_hex: str = to_hex(c_0)
-    y_tilde_hex: str = to_hex(compress_point(y_tilde))
-    s_hex: List[str] = list(map(to_hex, s))
-
-    signature = [c_0_hex] + [y_tilde_hex] + s_hex + hex_pub_keys
-    signature = list(map(lambda x: "0x" + x, signature))
-
-    return signature
-
-
 if __name__ == "__main__":
     secret_num = 4
 
@@ -348,13 +324,14 @@ if __name__ == "__main__":
     # print("Works as expected!")
 
     # TODO: Fix compression
-    assert(decompress_point(compress_point(signature[-1])) == signature[-1])
-    
+    c_0, s, y_tilde = signature
     print("--- Message ---")
     print("0x" + message.encode('utf-8').hex())
-    print("--- Signature ---")
-    print(serialize_signature(public_keys, signature))
-    print("--- h ---")
-    print(to_hex(H2(serialize(public_keys))))
-    print("--- hBytes ---")
-    print(serialize(public_keys).hex())
+    print("--- c0 ---")
+    print("0x" + to_hex(c_0))
+    print("--- KeyImage ---")
+    print(list(map(lambda x: "0x" + to_hex(x), list(y_tilde))))
+    print("--- s ---")
+    print(list(map(lambda x: "0x" + to_hex(x), list(s))))
+    print("--- public keys ---")
+    print(list(map(lambda x: ["0x" + to_hex(x[0]), "0x" + to_hex(x[1])], list(public_keys))))
