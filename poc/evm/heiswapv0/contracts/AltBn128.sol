@@ -80,10 +80,17 @@ library AltBn128 {
         }
     }
 
+    // Keep everything contained within this lib
     function addmodn(uint256 x, uint256 n) public pure
         returns (uint256)
     {
         return addmod(x, n, N);
+    }
+
+    function modn(uint256 x) public pure
+        returns (uint256)
+    {
+        return x % N;
     }
 
     /*
@@ -152,9 +159,7 @@ library AltBn128 {
         (beta, y) = evalCurve(x);
 
         // TODO: Better error handle
-        if (!onCurveBeta(beta, y)) {
-            return [uint256(0), uint256(0)];
-        }
+        require(onCurveBeta(beta, y), "Invalid point to be decompressed!");
 
         // Positive Y
         if ((x & ECSignMask) != 0) {

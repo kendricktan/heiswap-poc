@@ -72,6 +72,20 @@ A: int = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52
 MASK: int = 0x8000000000000000000000000000000000000000000000000000000000000000
 
 
+def random_private_key() -> int:
+    sk = randsp()
+
+    # Make sure
+    # decompress_point(compress_point(p)) == p
+    # otherwise regenerate key ....
+    pk = ecMul(G, sk)
+
+    if not decompress_point(compress_point(pk)) == pk:
+        return random_private_key()
+    
+    return sk
+
+
 def compress_point(p: Point) -> int:
     """
     Compresses a point
@@ -89,7 +103,7 @@ def decompress_point(_x: int) -> Point:
     Reconstructs a pint
     """
     x = _x & (~MASK)
-    y = eval_curve(x)
+    _, y = eval_curve(x)
 
     if (x & MASK != 0):
         if (y & 0x1 != 0x1):
@@ -281,11 +295,36 @@ def verify(
     )
 
 
+"""
+Utility section
+"""
+
+def serialize_signature(public_keys: List[Point], sig: Signature) -> List[str]:
+    """
+    Serializes signature to be passed into the smart contract
+    """
+    hex_pub_keys: List[str] = []
+    
+    for i in public_keys:
+        hex_pub_keys.append(to_hex(compress_point(i)))
+
+    c_0, s, y_tilde = sig
+
+    c_0_hex: str = to_hex(c_0)
+    y_tilde_hex: str = to_hex(compress_point(y_tilde))
+    s_hex: List[str] = list(map(to_hex, s))
+
+    signature = [c_0_hex] + [y_tilde_hex] + s_hex + hex_pub_keys
+    signature = list(map(lambda x: "0x" + x, signature))
+
+    return signature
+
+
 if __name__ == "__main__":
     secret_num = 4
 
     # Secret and public keys
-    secret_keys = [randsp() for i in range(secret_num)]
+    secret_keys = [random_private_key() for i in range(secret_num)]
     public_keys = [ecMul(G, s) for s in secret_keys]
 
     # Message
@@ -299,11 +338,20 @@ if __name__ == "__main__":
     signature = sign(message, public_keys, sign_key, sign_idx)
     assert verify(message, public_keys, signature)
 
-    wrong_sig1 = sign(message, public_keys, randsp(), sign_idx)
-    assert False is verify(message, public_keys, wrong_sig1)
+    # wrong_sig1 = sign(message, public_keys, randsp(), sign_idx)
+    # assert False is verify(message, public_keys, wrong_sig1)
 
-    wrong_sig2 = sign(message, public_keys, sign_key,
-                      (sign_idx + 1) // secret_num)
-    assert False is verify(message, public_keys, wrong_sig2)
+    # wrong_sig2 = sign(message, public_keys, sign_key,
+    #                   (sign_idx + 1) // secret_num)
+    # assert False is verify(message, public_keys, wrong_sig2)
 
     # print("Works as expected!")
+
+    print("--- Message ---")
+    print("0x" + message.encode('utf-8').hex())
+    print("--- Signature ---")
+    print(serialize_signature(public_keys, signature))
+    print("--- h ---")
+    print(to_hex(H2(serialize(public_keys))))
+    print("--- hBytes ---")
+    print(serialize(public_keys).hex())
