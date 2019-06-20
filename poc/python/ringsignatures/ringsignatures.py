@@ -347,6 +347,9 @@ if __name__ == "__main__":
 
     # print("Works as expected!")
 
+    # TODO: Fix compression
+    assert(decompress_point(compress_point(signature[-1])) == signature[-1])
+    
     print("--- Message ---")
     print("0x" + message.encode('utf-8').hex())
     print("--- Signature ---")

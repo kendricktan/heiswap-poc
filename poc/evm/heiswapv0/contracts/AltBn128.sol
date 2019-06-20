@@ -51,6 +51,12 @@ library AltBn128 {
         }
     }
 
+    function ecMulG(uint256 s) public view
+        returns (uint256[2] memory retP)
+    {
+        return ecMul([G1x, G1y], s);
+    }
+
     function powmod(uint256 base, uint256 e, uint256 m) public view
         returns (uint256 o)
     {
