@@ -333,5 +333,7 @@ if __name__ == "__main__":
     print(list(map(lambda x: "0x" + to_hex(x), list(y_tilde))))
     print("--- s ---")
     print(list(map(lambda x: "0x" + to_hex(x), list(s))))
+    print("--- private keys ---")
+    print(list(map(lambda x: "0x" + to_hex(x), list(secret_keys))))
     print("--- public keys ---")
     print(list(map(lambda x: ["0x" + to_hex(x[0]), "0x" + to_hex(x[1])], list(public_keys))))

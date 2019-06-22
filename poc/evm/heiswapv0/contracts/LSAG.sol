@@ -103,9 +103,9 @@ library LSAG {
     ) public view
         returns (bool)
     {
-        // Mininum signature size (2 public keys) = (2*2)+1
         require(publicKeys.length >= 2, "Signature size too small");
-        
+        require(publicKeys.length == s.length, "Signature sizes do not match!");
+
         uint256 c = c0;
         uint256 i = 0;
 

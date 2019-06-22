@@ -18,8 +18,7 @@ library AltBn128 {
 
     // (p+1) / 4
     uint256 constant public A = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52;
-
-    uint256 constant public ECSignMask = 0x8000000000000000000000000000000000000000000000000000000000000000;
+    
 
     /* ECC Functions */
     function ecAdd(uint256[2] memory p0, uint256[2] memory p1) public view
@@ -132,54 +131,5 @@ library AltBn128 {
 
         // require(beta == mulmod(y, y, P), "Invalid x for evalCurve");
         return (beta, y);
-    }
-
-    /*
-    * Compresses point
-    * https://github.com/solidblu1992/ethereum/blob/master/SimpleRingMixer/contracts/RingMixerV2.sol#L216
-    */
-    function compressPoint(uint256[2] memory p) public pure
-        returns (uint256)
-    {
-        uint256 x = p[0];
-
-        if (p[1] & 0x01 == 0x01) {
-            x |= ECSignMask;
-        }
-
-        return x;
-    }
-
-    /*
-    * Decompresses point
-    * https://github.com/solidblu1992/ethereum/blob/master/SimpleRingMixer/contracts/RingMixerV2.sol#L282
-    */
-    function decompressPoint(uint256 _x) public view
-        returns (uint256[2] memory)
-    {
-
-        uint256 x = _x & (~ECSignMask);
-        uint256 beta;
-        uint256 y;
-
-        (beta, y) = evalCurve(x);
-
-        // TODO: Better error handle
-        require(onCurveBeta(beta, y), "Invalid point to be decompressed!");
-
-        // Positive Y
-        if ((x & ECSignMask) != 0) {
-            if ((y & 0x1) != 0x1) {
-                y = P - y;
-            }
-        }
-        // Negative Y
-        else {
-            if ((y & 0x1) == 0x1) {
-                y = P - y;
-            }
-        }
-
-        return [x, y];
     }
 }
