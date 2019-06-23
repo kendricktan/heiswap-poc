@@ -12,10 +12,10 @@ contract HeiswapV0 {
     // Each blockTime is ~15 seconds
     // Want 86400 seconds to pass (24 hours)
     // So 86400 / 15 = 5760 blocks, which is roughly one day
-    uint constant minBlockNumberToCloseRing = 5760;
+    uint256 constant minBlockNumberToCloseRing = 5760;
 
     // Maximum number of participants in a ring
-    uint8 constant ringMaxParticipants = 5;
+    uint256 constant ringMaxParticipants = 5;
 
     struct Ring {
         /* NOTE: Once someone signs a transaction
@@ -43,14 +43,14 @@ contract HeiswapV0 {
         // The Public Key (stealth addresses)
         // These are in bytes because web3.js is
         // buggy with big int
-        mapping (uint8 => bytes32[2]) publicKeys;
+        mapping (uint256 => uint256[2]) publicKeys;
 
         // Number of participants who've withdrawn
         uint8 wParticipantsNo;
         // Key Images of participants who have withdrawn
         // Used to determine if a participant is trying to
         // double withdraw
-        mapping (uint8 => uint256[2]) keyImages;
+        mapping (uint256 => uint256[2]) keyImages;
     }
 
     // Fixed amounts allowed to be inserted into the rings
@@ -67,7 +67,7 @@ contract HeiswapV0 {
     mapping (uint256 => mapping(uint256 => Ring)) rings;
 
 
-    function deposit(bytes32[2] memory publicKey) public payable
+    function deposit(uint256[2] memory publicKey) public payable
     {
         // Get amount sent
         uint256 receivedEther = floorEtherAndCheck(msg.value);
@@ -114,16 +114,17 @@ contract HeiswapV0 {
     }
 
     // User can only withdraw if the ring is closed
+    // NOTE: Convert to ether
     // i.e. there is a ringHash
     function withdraw(
-        address receiver, uint256 amount, uint256 index,
+        address payable receiver, uint256 amount, uint256 index,
         uint256 c0, uint256[2] memory keyImage, uint256[] memory s
     ) public
     {
         uint i;
 
         // Get amount sent
-        uint256 withdrawEther = floorEtherAndCheck(amount);
+        uint256 withdrawEther = floorEtherAndCheck(amount * 1 ether);
 
         // Gets the current ring for the amounts
         Ring storage ring = rings[withdrawEther][index];
@@ -135,59 +136,54 @@ contract HeiswapV0 {
 
         // Ring needs to be closed first
         // TODO: Make sure ring is closed later on...
-        // if (ring.ringHash == "0x0000000000000000000000000000000000000000000000000000000000000000") {
-        //     revert("Ring isn't closed");
-        // }
+        if (ring.ringHash == bytes32(0x00)) {
+            revert("Ring isn't closed");
+        }
 
-        // Web3.js doesn't handle big int well,
-        // So I'm just using bytes32 ...
-        // Need to convert it to uint256
         uint256[2][] memory publicKeys = new uint256[2][](ringMaxParticipants);
 
-        // for (i = 0; i < ringMaxParticipants; i++) {
-        //     publicKeys[i] = [
-        //         uint256(ring.publicKeys[uint8(i)][0]),
-        //         uint256(ring.publicKeys[uint8(i)][1])
-        //     ];
-        // }
-
-        // return publicKeys;
+        for (i = 0; i < ringMaxParticipants; i++) {
+            publicKeys[i] = [
+                uint256(ring.publicKeys[uint8(i)][0]),
+                uint256(ring.publicKeys[uint8(i)][1])
+            ];
+        }
 
         // Attempts to verify ring signature
-        // bool signatureVerified = LSAG.verify(
-        //     abi.encodePacked(ring.ringHash), // Convert to bytes
-        //     c0,
-        //     keyImage,
-        //     s,
-        //     publicKeys
-        // );
+        bool signatureVerified = LSAG.verify(
+            abi.encodePacked(ring.ringHash), // Convert to bytes
+            c0,
+            keyImage,
+            s,
+            publicKeys
+        );
 
-        // if (!signatureVerified) {
-        //     revert("Invalid signature");
-        // }
+        if (!signatureVerified) {
+            revert("Invalid signature");
+        }
 
-        // // Checks if Key Image has been used
-        // // AKA No double withdraw
-        // for (i = 0; i < ring.wParticipantsNo; i++) {
-        //     if (ring.keyImages[uint8(i)][0] == keyImage[0] &&
-        //         ring.keyImages[uint8(i)][1] == keyImage[1]) {
-        //         revert("Signature has been used!");
-        //     }
-        // }
+        // Checks if Key Image has been used
+        // AKA No double withdraw
+        for (i = 0; i < ring.wParticipantsNo; i++) {
+            if (ring.keyImages[uint8(i)][0] == keyImage[0] &&
+                ring.keyImages[uint8(i)][1] == keyImage[1]) {
+                revert("Signature has been used!");
+            }
+        }
 
-        // // Otherwise adds key image to the current key image
-        // // And adjusts params accordingly
-        // ring.keyImages[ring.wParticipantsNo] = keyImage;
-        // ring.wParticipantsNo += 1;
+        // Otherwise adds key image to the current key image
+        // And adjusts params accordingly
+        ring.keyImages[ring.wParticipantsNo] = keyImage;
+        ring.wParticipantsNo += 1;
 
-        // // Send ETH to receiver
-        // // Calculate fees (1%)
-        // // receiver.transfer(withdrawEther);
-        // uint256 fees = withdrawEther / 100;
-        // receiver.transfer(withdrawEther - fees);
+        // Send ETH to receiver
+        // Calculate fees (1%)
+        // receiver.transfer(withdrawEther);
+        uint256 fees = withdrawEther / 100;
+        receiver.transfer(withdrawEther - fees);
 
-        // // Relayer gets (1%) of the xferred value
-        // msg.sender.transfer(fees);
+        // Relayer gets (1%) of the xferred value
+        msg.sender.transfer(fees);
     }
 
 
@@ -197,7 +193,7 @@ contract HeiswapV0 {
     ) public
     {
         // Get amount sent
-        uint256 receivedEther = floorEtherAndCheck(amount);
+        uint256 receivedEther = floorEtherAndCheck(amount * 1 ether);
 
         // Gets the current ring for the amounts
         uint256 curIndex = ringsNo[receivedEther];
@@ -227,7 +223,7 @@ contract HeiswapV0 {
     function createRingHash(uint256 amountEther, uint256 index) internal view
         returns (bytes32)
     {
-        bytes32[2][ringMaxParticipants] memory publicKeys;
+        uint256[2][ringMaxParticipants] memory publicKeys;
         uint256 receivedEther = floorEtherAndCheck(amountEther * 1 ether);
 
         Ring storage r = rings[receivedEther][index];
@@ -258,15 +254,18 @@ contract HeiswapV0 {
     }
 
     // Gets all addresses in a Ring
+    // Converting to Bytes32 cause web3.js has a bug that doesn't convert
+    // Big Num correctly....
     function getPublicKeys(uint256 amountEther, uint256 index) public view
         returns (bytes32[2][ringMaxParticipants] memory)
     {
         uint256 receivedEther = floorEtherAndCheck(amountEther * 1 ether);
-        uint256 maxParticipants = rings[receivedEther][index].dParticipantsNo;
+
         bytes32[2][ringMaxParticipants] memory publicKeys;
 
-        for (uint256 i = 0; i < maxParticipants; i++) {
-            publicKeys[i] = rings[receivedEther][index].publicKeys[uint8(i)];
+        for (uint i = 0; i < ringMaxParticipants; i++) {
+            publicKeys[i][0] = bytes32(rings[receivedEther][index].publicKeys[i][0]);
+            publicKeys[i][1] = bytes32(rings[receivedEther][index].publicKeys[i][1]);
         }
 
         return publicKeys;
@@ -292,7 +291,7 @@ contract HeiswapV0 {
         uint256 i;
         bool allowed = false;
 
-        // Floors received ethere
+        // Floors received ether
         uint256 receivedEther = (receivedAmount / 1 ether) * 1 ether;
 
         for (i = 0; i < 10; i ++) {
