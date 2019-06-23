@@ -25,7 +25,7 @@ public_keys = [
 secret_key = 0x09e02047c4221e31d7e66c539fe7e6822d87ab9b9c6193b11a419ab83cec9bb1
 
 # unhexlify(h) remember to remove the '0x'
-msg = unhexlify("af6a7d5382349c4af087d737455b3e7973788da4264e5bed7c008096ced688fc")
+msg = unhexlify("ec4be43dbf016ad1cd91fbfcbcd1bfc69120128de34f0987294a42c1d3394f8a")
 public_keys = list(map(lambda x: [int(x[0], 16), int(x[1], 16)], public_keys))
 idx = 0
 signature = sign(msg, public_keys, secret_key, idx)

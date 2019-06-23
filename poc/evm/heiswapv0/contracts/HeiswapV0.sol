@@ -117,14 +117,15 @@ contract HeiswapV0 {
     // NOTE: Convert to ether
     // i.e. there is a ringHash
     function withdraw(
-        address payable receiver, uint256 amount, uint256 index,
+        address payable receiver, uint256 amountEther, uint256 index,
         uint256 c0, uint256[2] memory keyImage, uint256[] memory s
     ) public
     {
         uint i;
+        uint256 startGas = gasleft();
 
         // Get amount sent
-        uint256 withdrawEther = floorEtherAndCheck(amount * 1 ether);
+        uint256 withdrawEther = floorEtherAndCheck(amountEther * 1 ether);
 
         // Gets the current ring for the amounts
         Ring storage ring = rings[withdrawEther][index];
@@ -177,13 +178,15 @@ contract HeiswapV0 {
         ring.wParticipantsNo += 1;
 
         // Send ETH to receiver
-        // Calculate fees (1%)
-        // receiver.transfer(withdrawEther);
-        uint256 fees = withdrawEther / 100;
-        receiver.transfer(withdrawEther - fees);
+        // Calculate fees (1.33%) + gasUsage fees
+        uint256 gasUsed = startGas - gasleft();
+        uint256 fees = (withdrawEther / 75) + gasUsed + startGas;
 
-        // Relayer gets (1%) of the xferred value
+        // Relayer gets (1%) of the xferred value + compensated for gas usage
         msg.sender.transfer(fees);
+
+        // Reciever then gets the remaining ETH
+        receiver.transfer(withdrawEther - fees);
     }
 
 
@@ -199,15 +202,14 @@ contract HeiswapV0 {
         uint256 curIndex = ringsNo[receivedEther];
         Ring storage ring = rings[receivedEther][curIndex];
 
-        // require(
-        //     ring.ringHash != bytes32(0x00),
-        //     "Ring is already closed"
-        // );
 
-        require(
-            block.number - 1 - ring.createdBlockNumber >= minBlockNumberToCloseRing,
-            "Ring needs to mature longer before forcefully closing"
-        );
+        if (ring.ringHash != bytes32(0x00)) {
+            revert("Ring is already closed!");
+        }
+
+        if (block.number - 1 - ring.createdBlockNumber >= minBlockNumberToCloseRing) {
+            revert("Ring needs to mature longer before forcefully closing");
+        }
 
         // Close the ring
         ring.ringHash = createRingHash(receivedEther / (1 ether), index);
