@@ -1,0 +1,17 @@
+{
+  "name": "bn128",
+  "version": "1.0.0",
+  "description": "alt_bn_128 Curve in JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bn.js": "^4.11.8",
+    "crypto": "^1.0.1",
+    "elliptic": "^6.4.1",
+    "web3-utils": "^1.0.0-beta.55"
+  }
+}

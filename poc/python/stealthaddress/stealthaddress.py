@@ -4,43 +4,74 @@ Stealth addresses in bitcoin
 Basically a diffie-hellman with extra steps
 """
 
+import math
+import web3
 import hashlib
 import functools
 import ecdsa
 
+from random import randint
+from web3 import Web3
+
 from typing import Tuple, List, Union
 
-from ecdsa import numbertheory, ellipticcurve
-from ecdsa.curves import SECP256k1
-from ecdsa.ecdsa import curve_secp256k1
-from ecdsa.ellipticcurve import Point
-from ecdsa.util import string_to_number, number_to_string, randrange
+from py_ecc import bn128
+from py_ecc.bn128 import FQ, add, multiply, double
+from py_ecc.bn128.bn128_field_elements import inv
 
-G = SECP256k1.generator
-P = SECP256k1.order
-hash_function = hashlib.sha256
-
+# Signature :: (Initial construction value, array of public keys, link of unique signer)
+Point = Tuple[int, int]
+Signature = Tuple[int, List[int], Point]
 Scalar = int
+
+asint = lambda x: x.n if isinstance(x, bn128.FQ) else x
+fq2point = lambda x: (asint(x[0]), asint(x[1]))
+randsn = lambda: randint(1, N - 1)
+randsp = lambda: randint(1, P - 1)
+sbmul = lambda s: bn128.multiply(G, asint(s))
+addmodn = lambda x, y: (x + y) % N
+addmodp = lambda x, y: (x + y) % P
+mulmodn = lambda x, y: (x * y) % N
+mulmodp = lambda x, y: (x * y) % P
+submodn = lambda x, y: (x - y) % N
+submodp = lambda x, y: (x - y) % P
+invmodn = lambda x: inv(x, N)
+invmodp = lambda x: inv(x, P)
+negp = lambda x: (x[0], -x[1])
+
+
+G: Point = fq2point(bn128.G1)
+N: int = bn128.curve_order
+P: int = bn128.field_modulus
+A: int = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52
+MASK: int = 0x8000000000000000000000000000000000000000000000000000000000000000
 
 
 def hash_int(i: int) -> int:
     """
     Hashes int and returns 
     """
-    return int(hash_function(str(i).encode('utf-8')).hexdigest(), 16)
+    b = "0x" + i.encode('utf-8').hex()
+
+    return int(
+        Web3.soliditySha3(["bytes"], [b]).hex(),
+        16
+     ) % N
 
 
 def decode_int(b: bytes) -> int:
     return int(b, 16)
 
 
-def random_scalar() -> Scalar:
-    """
-    Helper function
+def ecMul(p: Point, x: int) -> Point:
+    pt = FQ(p[0]), FQ(p[1])
+    return fq2point(multiply(pt, x))
 
-    Returns a random scalar (secret key)
-    """
-    return randrange(SECP256k1.order)
+
+def ecAdd(p1: Point, p2: Point) -> Point:
+    p1 = FQ(p1[0]), FQ(p1[1])
+    p2 = FQ(p2[0]), FQ(p2[1])
+    return fq2point(add(p1, p2))
 
 
 def serialize(*args) -> bytes:
@@ -68,37 +99,37 @@ def serialize(*args) -> bytes:
 
 
 # Alice's secret key & public key
-alice_sk = random_scalar()
-alice_pk = G * alice_sk
+alice_sk = randsp()
+alice_pk = ecMul(G, alice_sk)
 
 # Bob's secret key
-bob_sk = random_scalar()
-bob_pk = G * bob_sk
+bob_sk = randsp()
+bob_pk = ecMul(G, bob_sk)
 
 # Alice generates a stealth address for Bob
-random_sk = random_scalar()
-random_pk = G * random_sk
+random_sk = randsp()
+random_pk = ecMul(G, random_sk)
 
-d = random_sk * bob_pk
+d = ecMul(bob_pk, random_sk)
 
 # Hash d to make it unlinkable
 stealth_sk = decode_int(
-    hash_function(serialize(d)).hexdigest()
+    Web3.soliditySha3(["bytes"], ["0x" + serialize(d).hex()]).hex()
 )
-stealth_address = G * stealth_sk
+stealth_address = ecMul(G, stealth_sk)
 
 # Alice publishes the stealth_pk along with the random_pk
 
 # Given the random_pk and the stealth_pk
 # Bob checks if the stealth address belongs to him
-bob_d = bob_sk * random_pk
+bob_d = ecMul(random_pk, bob_sk)
 bob_stealth_sk = decode_int(
-    hash_function(serialize(bob_d)).hexdigest()
+    Web3.soliditySha3(["bytes"], ["0x" + serialize(bob_d).hex()]).hex()
 )
-bob_stealth_address = G * bob_stealth_sk
+bob_stealth_address = ecMul(G, bob_stealth_sk)
 
 assert bob_stealth_address == stealth_address
 
 # Construct the one-time private key associated with the stealth address
-assert G * bob_stealth_sk == stealth_address
-assert G * stealth_sk == bob_stealth_address
+assert ecMul(G, bob_stealth_sk) == stealth_address
+assert ecMul(G, stealth_sk) == bob_stealth_address
