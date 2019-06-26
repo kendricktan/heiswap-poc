@@ -59,9 +59,11 @@ def powmod(a, b, n):
     while k >= 0:
         c *= 2
         f = (f*f)%n
-        if b & (1 << k):
+
+        if (b & (1 << k)) > 0:
             c += 1
             f = (f*a) % n
+            
         k -= 1
     return f
 
