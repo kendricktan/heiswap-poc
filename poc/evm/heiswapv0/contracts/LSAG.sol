@@ -131,18 +131,28 @@ library LSAG {
             z_1 = ringCalcZ1(publicKeys[i], c, s[i]);
             z_2 = ringCalcZ2(keyImage, h, s[i], c);
 
-            c = H1(
-                abi.encodePacked(
-                    hBytes,
-                    keyImage,
-                    message,
-                    z_1,
-                    z_2
-                )
-            );
+            if (i != publicKeys.length - 1){
+                c = H1(
+                    abi.encodePacked(
+                        hBytes,
+                        keyImage,
+                        message,
+                        z_1,
+                        z_2
+                    )
+                );
+            }
         }
 
-        return c0 == c;
+        return c0 == H1(
+            abi.encodePacked(
+                hBytes,
+                keyImage,
+                message,
+                z_1,
+                z_2
+            )
+        );
     }
 
 }
