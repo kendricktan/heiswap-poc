@@ -212,6 +212,36 @@ bn128.ringSign = (
   return [c[0], s, yTilde];
 };
 
+/**
+ *  Ring signature verification
+ */
+bn128.ringVerify = (
+  message: String,
+  publicKeys: Array<Point>,
+  signature: Signature
+): Boolean => {
+  const keyCount = publicKeys.length;
+
+  const [c0, s, yTilde] = signature;
+  let c = c0.clone();
+
+  // Step 1
+  const h = h2(serialize(publicKeys));
+
+  let z1, z2;
+
+  for (let i = 0; i < keyCount; i++) {
+    z1 = bn128.ecAdd(bn128.ecMul(G, s[i]), bn128.ecMul(publicKeys[i], c));
+    z2 = bn128.ecAdd(bn128.ecMul(h, s[i]), bn128.ecMul(yTilde, c));
+
+    if (i < (keyCount - 1)) {
+      c = h1(serialize([publicKeys, yTilde, message, z1, z2]));
+    }
+  }
+
+  return c0.cmp(h1(serialize([publicKeys, yTilde, message, z1, z2]))) === 0;
+};
+
 /* Helper Functions */
 
 /**
@@ -297,13 +327,12 @@ const serialize = (arr: Array<any>): String => {
 // For testing purposes
 // let secretNum = 4;
 // let message = "ETH for you and everyone!";
-// let secretKeys = Array(secretNum)
-//   .fill(0)
-//   .map(() => bn128.randomScalar());
+// let secretKeys = Array(secretNum).fill(0).map(() => bn128.randomScalar());
 // let publicKeys = secretKeys.map(x => bn128.ecMul(G, x));
 // let signIdx = 1;
 // let signKey = secretKeys[signIdx];
 // let signature = bn128.ringSign(message, publicKeys, signKey, signIdx);
+// console.log("Signature verification: ", bn128.verify(message, publicKeys, signature))
 
 // // Print out for easier verification
 // // Pass the params to the python "verify" function and it should return True
@@ -321,3 +350,11 @@ const serialize = (arr: Array<any>): String => {
 // console.log("],[");
 // console.log(signature[2][0].toString(10) + ", " + signature[2][1].toString(10));
 // console.log("]]");
+
+module.exports = {
+  bn128,
+  powmod,
+  h1,
+  h2,
+  serialize
+}
