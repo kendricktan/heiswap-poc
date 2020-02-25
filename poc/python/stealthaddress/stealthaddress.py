@@ -17,7 +17,6 @@ from typing import Tuple, List, Union
 
 from py_ecc import bn128
 from py_ecc.bn128 import FQ, add, multiply, double
-from py_ecc.bn128.bn128_field_elements import inv
 
 # Signature :: (Initial construction value, array of public keys, link of unique signer)
 Point = Tuple[int, int]
@@ -35,8 +34,6 @@ mulmodn = lambda x, y: (x * y) % N
 mulmodp = lambda x, y: (x * y) % P
 submodn = lambda x, y: (x - y) % N
 submodp = lambda x, y: (x - y) % P
-invmodn = lambda x: inv(x, N)
-invmodp = lambda x: inv(x, P)
 negp = lambda x: (x[0], -x[1])
 
 
