@@ -86,6 +86,10 @@ def random_private_key() -> int:
     return sk
 
 
+def private_to_public(k: int) -> Tuple[int, int]:
+    return ecMul(G, k)
+
+
 def compress_point(p: Point) -> int:
     """
     Compresses a point

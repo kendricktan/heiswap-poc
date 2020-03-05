@@ -44,6 +44,14 @@ A: int = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52
 MASK: int = 0x8000000000000000000000000000000000000000000000000000000000000000
 
 
+def random_private_key() -> int:
+    return randsp()
+    
+
+def private_to_public(k: int) -> Tuple[int, int]:
+    return ecMul(G, k)
+
+
 def hash_int(i: int) -> int:
     """
     Hashes int and returns 
